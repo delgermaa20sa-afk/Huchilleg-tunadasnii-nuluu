@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Хүчиллэг Тунадасны Нөлөөллийн Симуляци</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Нэмэлт гоёлын стилүүд */
+        .ph-gradient {
+            background: linear-gradient(to right, #ff3b30, #ff9500, #ffcc00, #4cd964, #5ac8fa, #007aff);
+        }
+        .custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid #4f46e5;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            transition: all 0.15s ease-in-out;
+        }
+        .custom-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        .tab-active {
+            border-bottom: 3px solid #4f46e5;
+            color: #4f46e5;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+
+    <!-- Толгойн хэсэг -->
+    <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50 py-4 px-6">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-indigo-600/20 text-indigo-400 rounded-lg">
+                    <i class="fa-solid fa-cloud-showers-heavy text-2xl animate-bounce"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        Хүчиллэг Тунадасны Симуляци
+                    </h1>
+                    <p class="text-xs text-slate-400">Экологийн тэнцвэрт байдал ба хүчлийн борооны нөлөөллийг судлах</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 bg-slate-900 px-4 py-2 rounded-lg border border-slate-800">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Симуляцын горим:</span>
+                <span id="sim-status-badge" class="px-2 py-0.5 text-xs font-bold rounded bg-green-500/10 text-green-400 border border-green-500/20 flex items-center gap-1.5">
+                    <span class="w-2 height w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    Идэвхтэй бус
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Үндсэн агуулга -->
+    <main class="flex-grow max-w-7xl mx-auto w-full p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Зүүн талын удирдлагын хэсэг -->
+        <section class="lg:col-span-4 bg-slate-950/40 border border-slate-800 rounded-2xl p-6 flex flex-col gap-6 backdrop-blur">
+            <div>
+                <h2 class="text-lg font-bold text-slate-200 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-indigo-400"></i> Удирдах самбар
+                </h2>
+                <p class="text-sm text-slate-400">Усны рН (хүчиллэг байдал) болон хугацааг тохируулан симуляцыг ажиллуулна уу.</p>
+            </div>
+
+            <!-- рН Слайдер -->
+            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-sm font-semibold text-slate-300">Борооны рН (pH):</span>
+                    <span id="ph-display-val" class="px-3 py-1 text-lg font-extrabold rounded-lg bg-indigo-600 text-white min-w-[60px] text-center shadow">
+                        7.0
+                    </span>
+                </div>
+                
+                <div class="relative mb-6 mt-4">
+                    <div class="ph-gradient h-3 rounded-full opacity-90"></div>
+                    <input type="range" id="ph-slider" min="3.0" max="7.0" step="0.1" value="7.0" 
+                           class="absolute top-0 w-full h-3 opacity-0 cursor-pointer custom-slider appearance-none z-10">
+                </div>
+                
+                <div class="flex justify-between text-xs text-slate-500 font-mono mt-[-10px]">
+                    <span class="text-red-400 font-bold">Хүчтэй Хүчиллэг (3.0)</span>
+                    <span class="text-yellow-400">Сул хүчиллэг (5.6)</span>
+                    <span class="text-blue-400 font-bold">Саармаг (7.0)</span>
+                </div>
+            </div>
+
+            <!-- Хугацаа болон Хурд удирдах -->
+            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl flex flex-col gap-4">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="font-semibold text-slate-300">Симуляцын хугацаа:</span>
+                    <span id="year-display" class="font-bold text-indigo-400 font-mono text-base">0 жил / сар</span>
+                </div>
+                
+                <!-- Ажиллуулах товчлуурууд -->
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="btn-start" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20">
+                        <i class="fa-solid fa-play"></i> Эхлүүлэх
+                    </button>
+                    <button id="btn-reset" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-3 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 border border-slate-700">
+                        <i class="fa-solid fa-rotate-left"></i> Шинэчлэх
+                    </button>
+                </div>
+            </div>
+
+            <!-- Бодит мэдээлэл / Эрсдэлийн хэмжүүр -->
+            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl flex flex-col gap-4">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Экологийн эрсдэлийн үнэлгээ</h3>
+                
+                <!-- Ой Мод -->
+                <div>
+                    <div class="flex justify-between text-xs text-slate-300 mb-1">
+                        <span>Ой модны эрүүл мэнд:</span>
+                        <span id="forest-status-txt" class="font-semibold text-green-400">100% (Маш сайн)</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                        <div id="forest-bar" class="bg-green-500 h-full transition-all duration-300" style="width: 100%"></div>
+                    </div>
+                </div>
+
+                <!-- Хөшөө дурсгал -->
+                <div>
+                    <div class="flex justify-between text-xs text-slate-300 mb-1">
+                        <span>Хөшөөний элэгдэл:</span>
+                        <span id="monument-status-txt" class="font-semibold text-green-400">0% (Хэвийн)</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                        <div id="monument-bar" class="bg-green-500 h-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Усан экосистем -->
+                <div>
+                    <div class="flex justify-between text-xs text-slate-300 mb-1">
+                        <span>Нуурын биологийн төрөл зүйл:</span>
+                        <span id="lake-status-txt" class="font-semibold text-green-400">100% (Эрүүл)</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                        <div id="lake-bar" class="bg-green-500 h-full transition-all duration-300" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Химийн томьёоны тайлбар -->
+            <div class="bg-indigo-950/30 border border-indigo-900/30 p-4 rounded-xl text-xs text-slate-300">
+                <h4 class="font-bold text-indigo-400 mb-1"><i class="fa-solid fa-flask"></i> Химийн нөлөөлөл:</h4>
+                <p id="chem-explanation">Усны рН $7.0$ (саармаг) үед экосистемд ямар нэг сөрөг химийн урвал явагдахгүй, байгалийн тэнцвэрт байдал хадгалагдана.</p>
+            </div>
+        </section>
+
+        <!-- Баруун талын интерактив симуляцын хэсэг -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+            
+            <!-- Таб сонголт -->
+            <div class="flex border-b border-slate-800 bg-slate-950/20 rounded-xl p-1 gap-2">
+                <button id="tab-forest" class="flex-1 py-3 px-4 rounded-lg font-medium text-sm transition duration-150 flex items-center justify-center gap-2 tab-active text-slate-300">
+                    <i class="fa-solid fa-tree"></i> Ой мод
+                </button>
+                <button id="tab-monument" class="flex-1 py-3 px-4 rounded-lg font-medium text-sm transition duration-150 text-slate-400 hover:text-slate-200 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-landmark"></i> Хөшөө дурсгал
+                </button>
+                <button id="tab-lake" class="flex-1 py-3 px-4 rounded-lg font-medium text-sm transition duration-150 text-slate-400 hover:text-slate-200 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-fish"></i> Нуурын экосистем
+                </button>
+            </div>
+
+            <!-- Визуал симуляцын талбар -->
+            <div class="relative bg-slate-950/80 border border-slate-800 rounded-2xl h-[450px] overflow-hidden shadow-2xl">
+                <!-- Борооны эффект үзүүлэх канвас -->
+                <canvas id="rain-canvas" class="absolute inset-0 pointer-events-none z-15"></canvas>
+                
+                <!-- Ой Модны Симуляц -->
+                <div id="view-forest" class="absolute inset-0 flex flex-col justify-end p-6 transition-all duration-500">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-indigo-950/20"></div>
+                    <!-- Сурвалж зураглал (SVG) -->
+                    <svg class="w-full h-2/3 z-10" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Хөрс -->
+                        <path id="forest-soil" d="M0,280 Q200,260 400,280 T800,270 L800,300 L0,300 Z" fill="#4a3728"/>
+                        <path id="forest-grass" d="M0,280 Q200,260 400,280 T800,270 L800,285 L0,285 Z" fill="#2d6a4f"/>
+                        
+                        <!-- Мод 1 (Зүүн талын том мод) -->
+                        <g id="tree-1">
+                            <rect x="150" y="100" width="20" height="180" fill="#5c4033"/>
+                            <!-- Навчис (РН-ээс хамаарч өнгө, хэлбэр нь өөрчлөгдөнө) -->
+                            <path class="tree-leaves" d="M110,120 C110,60 210,60 210,120 C230,120 230,160 190,170 C190,190 130,190 130,170 C90,160 90,120 110,120 Z" fill="#1b4332" opacity="0.95"/>
+                            <path class="tree-leaves-dead" d="M120,130 C130,90 190,90 190,130 C180,150 140,150 120,130 Z" fill="#8c6239" opacity="0.0"/>
+                        </g>
+
+                        <!-- Мод 2 (Баруун талын жижиг мод) -->
+                        <g id="tree-2">
+                            <rect x="600" y="130" width="15" height="150" fill="#5c4033"/>
+                            <path class="tree-leaves" d="M570,140 C570,90 650,90 650,140 C665,140 665,170 635,180 C635,195 590,195 590,180 C550,170 555,140 570,140 Z" fill="#1b4332" opacity="0.95"/>
+                            <path class="tree-leaves-dead" d="M580,145 C590,110 630,110 630,145 C625,160 595,160 580,145 Z" fill="#8c6239" opacity="0.0"/>
+                        </g>
+
+                        <!-- Мод 3 (Дундах ургамал, цэцэгс) -->
+                        <g id="flowers" opacity="1">
+                            <!-- Цэцэг 1 -->
+                            <circle cx="350" cy="260" r="6" fill="#f94144"/>
+                            <circle cx="344" cy="260" r="4" fill="#f3722c"/>
+                            <circle cx="356" cy="260" r="4" fill="#f3722c"/>
+                            <circle cx="350" cy="254" r="4" fill="#f3722c"/>
+                            <circle cx="350" cy="266" r="4" fill="#f3722c"/>
+                            <rect x="349" y="266" width="2" height="15" fill="#4d908e"/>
+                            
+                            <!-- Цэцэг 2 -->
+                            <circle cx="450" cy="265" r="5" fill="#f9c74f"/>
+                            <circle cx="445" cy="265" r="3" fill="#f9844a"/>
+                            <circle cx="455" cy="265" r="3" fill="#f9844a"/>
+                            <circle cx="450" cy="260" r="3" fill="#f9844a"/>
+                            <circle cx="450" cy="270" r="3" fill="#f9844a"/>
+                            <rect x="449" y="270" width="2" height="11" fill="#4d908e"/>
+                        </g>
+                    </svg>
+                    <!-- Мэдээллийн текст -->
+                    <div class="z-20 bg-slate-950/80 p-4 rounded-xl border border-slate-800 backdrop-blur">
+                        <h4 class="font-bold text-sm text-green-400 flex items-center gap-1.5 mb-1">
+                            <i class="fa-solid fa-seedling"></i> Ой Мод ба Хөрсний байдал
+                        </h4>
+                        <p id="forest-desc" class="text-xs text-slate-300">
+                            Эрүүл экосистем. Хөрсний рН хэвийн тул ургамал шим тэжээлээ бүрэн авч байна.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Хөшөө Дурсгалын Симуляц -->
+                <div id="view-monument" class="absolute inset-0 flex flex-col justify-end p-6 transition-all duration-500 opacity-0 pointer-events-none">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-indigo-950/20"></div>
+                    <svg class="w-full h-2/3 z-10" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Суурь ба тавцан -->
+                        <rect x="300" y="250" width="200" height="30" rx="4" fill="#718096"/>
+                        <rect x="330" y="210" width="140" height="40" rx="2" fill="#a0aec0"/>
+                        
+                        <!-- Баримал / Хөшөө (Грекийн Багана эсвэл Хөрөг хөшөө хэлбэртэй) -->
+                        <g id="sculpture">
+                            <!-- Баганы бие -->
+                            <path id="sculpture-body" d="M370,70 L430,70 L420,210 L380,210 Z" fill="#cbd5e0"/>
+                            <!-- Толгой/Оройн чимэг -->
+                            <path id="sculpture-head" d="M360,60 L440,60 L440,70 L360,70 Z" fill="#e2e8f0"/>
+                            <!-- Баримал дээрх элэгдлийн ан цавууд (Эхэндээ харагдахгүй) -->
+                            <path id="sculpture-cracks" d="M380,90 L395,110 L390,130 M415,140 L405,160 L410,185" stroke="#4a5568" stroke-width="2" opacity="0"/>
+                            <path id="sculpture-dissolve" d="M370,70 Q385,80 390,70 T420,70" fill="none" stroke="#718096" stroke-width="4" opacity="0"/>
+                        </g>
+
+                        <!-- Бударч буй бөмбөлгүүд (Химийн урвал явагдах үед) -->
+                        <g id="co2-bubbles"></g>
+                    </svg>
+                    <div class="z-20 bg-slate-950/80 p-4 rounded-xl border border-slate-800 backdrop-blur">
+                        <h4 class="font-bold text-sm text-yellow-400 flex items-center gap-1.5 mb-1">
+                            <i class="fa-solid fa-monument"></i> Архитектур, Соёлын өв
+                        </h4>
+                        <p id="monument-desc" class="text-xs text-slate-300">
+                            Барилга байгууламж, түүхэн дурсгалт газрууд орчны аюулгүй байдалд байна.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Усан Экосистемийн Симуляц -->
+                <div id="view-lake" class="absolute inset-0 flex flex-col justify-end p-6 transition-all duration-500 opacity-0 pointer-events-none">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-blue-950/30"></div>
+                    <svg class="w-full h-2/3 z-10" viewBox="0 0 800 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Нуур (Усны мандал) -->
+                        <rect id="lake-water" x="0" y="80" width="800" height="220" fill="#1d4ed8" opacity="0.65"/>
+                        <path id="lake-bottom" d="M0,280 Q250,260 500,290 T800,270 L800,300 L0,300 Z" fill="#1e293b"/>
+                        
+                        <!-- Загаснууд (динамикаар хөдөлнө) -->
+                        <g id="fish-1" transform="translate(150, 140)">
+                            <path class="fish-body" d="M-20,0 C-10,-10 10,-10 20,0 C10,10 -10,10 -20,0 Z" fill="#f97316"/>
+                            <polygon class="fish-fin" points="-20,0 -30,-8 -27,0 -30,8" fill="#ea580c"/>
+                            <circle class="fish-eye" cx="12" cy="-2" r="1.5" fill="#fff"/>
+                        </g>
+
+                        <g id="fish-2" transform="translate(450, 190)">
+                            <path class="fish-body" d="M-15,0 C-7,-7 7,-7 15,0 C7,7 -7,7 -15,0 Z" fill="#3b82f6"/>
+                            <polygon class="fish-fin" points="-15,0 -22,-6 -20,0 -22,6" fill="#2563eb"/>
+                            <circle class="fish-eye" cx="9" cy="-1.5" r="1.2" fill="#fff"/>
+                        </g>
+
+                        <g id="fish-3" transform="translate(600, 120)">
+                            <path class="fish-body" d="M-18,0 C-9,-8 9,-8 18,0 C9,8 -9,8 -18,0 Z" fill="#ec4899"/>
+                            <polygon class="fish-fin" points="-18,0 -26,-7 -23,0 -26,7" fill="#db2777"/>
+                            <circle class="fish-eye" cx="11" cy="-2" r="1.4" fill="#fff"/>
+                        </g>
+
+                        <!-- Далайн ургамал -->
+                        <path id="seaweed-1" d="M100,280 Q90,230 110,180 T100,120" stroke="#059669" stroke-width="5" stroke-linecap="round" fill="none"/>
+                        <path id="seaweed-2" d="M680,280 Q695,220 670,170 T685,110" stroke="#059669" stroke-width="4" stroke-linecap="round" fill="none"/>
+                    </svg>
+                    <div class="z-20 bg-slate-950/80 p-4 rounded-xl border border-slate-800 backdrop-blur">
+                        <h4 class="font-bold text-sm text-blue-400 flex items-center gap-1.5 mb-1">
+                            <i class="fa-solid fa-water"></i> Усан экосистем & Загасны амьдрал
+                        </h4>
+                        <p id="lake-desc" class="text-xs text-slate-300">
+                            Усны рН хэвийн хэмжээнд байна. Нуурын амьд биетүүд эрүүл, аюулгүй амьдарч байна.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Сургалтын нэмэлт мэдээлэл -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-slate-950/40 border border-slate-800 p-5 rounded-2xl">
+                    <h3 class="font-bold text-slate-200 mb-2 flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-lightbulb text-yellow-400"></i> Хүчиллэг тунадас гэж юу вэ?
+                    </h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Хүхрийн давхар исэл ($SO_2$) болон азотын ислүүд ($NO_x$) агаарт дэгдэж, ус, хүчилтөрөгч болон бусад химийн бодисуудтай урвалд орсноор сул хүчлүүдийг үүсгэдэг. Үүний үр дүнд хүчиллэг шинж чанартай тунадас дэлхий дээр унахыг хэлнэ. Саармаг борооны усны рН нь ойролцоогоор $5.6$ байдаг.
+                    </p>
+                </div>
+                
+                <div class="bg-slate-950/40 border border-slate-800 p-5 rounded-2xl">
+                    <h3 class="font-bold text-slate-200 mb-2 flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-shield-halved text-green-400"></i> Яаж урьдчилан сэргийлэх вэ?
+                    </h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Дулааны цахилгаан станц болон автомашины хорт утааг бууруулах, сэргээгдэх эрчим хүчийг ашиглах, мөн шохойн чулуужуулалт (хүчиллэгжсэн нуур, хөрсийг саармагжуулахын тулд суурьлаг бодис нэмэх) зэрэг аргыг хэрэглэдэг.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Хөлийн хэсэг -->
+    <footer class="border-t border-slate-800 bg-slate-950 py-4 px-6 text-center text-xs text-slate-500">
+        <p>© 2026 Хүчиллэг Тунадасны Хими-Экологийн Интерактив Симуляци. Сургуулийн практик туршилтад зориулав.</p>
+    </footer>
+
+    <!-- JavaScript Симуляцийн Логик -->
+    <script>
+        // --- ӨГӨГДӨЛ БА СТЭЙТ (STATE) ---
+        let isSimulating = false;
+        let phLevel = 7.0;
+        let elapsedYears = 0;
+        let elapsedMonths = 0;
+        let intervalId = null;
+        let currentTab = 'forest'; // forest, monument, lake
+
+        // Экосистемийн эрүүл мэндийн хувь хэмжээ
+        let forestHealth = 100;
+        let monumentErosion = 0;
+        let lakeHealth = 100;
+
+        // --- DOM ЭЛЕМЕНТҮҮД ---
+        const phSlider = document.getElementById('ph-slider');
+        const phDisplayVal = document.getElementById('ph-display-val');
+        const btnStart = document.getElementById('btn-start');
+        const btnReset = document.getElementById('btn-reset');
+        const yearDisplay = document.getElementById('year-display');
+        const simStatusBadge = document.getElementById('sim-status-badge');
+
+        const forestStatusTxt = document.getElementById('forest-status-txt');
+        const forestBar = document.getElementById('forest-bar');
+        const monumentStatusTxt = document.getElementById('monument-status-txt');
+        const monumentBar = document.getElementById('monument-bar');
+        const lakeStatusTxt = document.getElementById('lake-status-txt');
+        const lakeBar = document.getElementById('lake-bar');
+
+        const chemExplanation = document.getElementById('chem-explanation');
+
+        // Табууд ба Визуал хувилбарууд
+        const tabForest = document.getElementById('tab-forest');
+        const tabMonument = document.getElementById('tab-monument');
+        const tabLake = document.getElementById('tab-lake');
+
+        const viewForest = document.getElementById('view-forest');
+        const viewMonument = document.getElementById('view-monument');
+        const viewLake = document.getElementById('view-lake');
+
+        // SVG дотоод элементүүд
+        const forestSoil = document.getElementById('forest-soil');
+        const forestGrass = document.getElementById('forest-grass');
+        const flowersGroup = document.getElementById('flowers');
+        const sculptureBody = document.getElementById('sculpture-body');
+        const sculptureHead = document.getElementById('sculpture-head');
+        const sculptureCracks = document.getElementById('sculpture-cracks');
+        const sculptureDissolve = document.getElementById('sculpture-dissolve');
+        const co2BubblesGroup = document.getElementById('co2-bubbles');
+        const lakeWater = document.getElementById('lake-water');
+        const seaweed1 = document.getElementById('seaweed-1');
+        const seaweed2 = document.getElementById('seaweed-2');
+
+        const forestDesc = document.getElementById('forest-desc');
+        const monumentDesc = document.getElementById('monument-desc');
+        const lakeDesc = document.getElementById('lake-desc');
+
+        // Канвас (борооны эффект)
+        const canvas = document.getElementById('rain-canvas');
+        const ctx = canvas.getContext('2d');
+        let animationFrameId;
+        let rainDrops = [];
+
+        // --- БОРООНЫ АНИМАЦИ (CANVAS) ---
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class RainDrop {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * -50 - 20;
+                this.speed = Math.random() * 8 + 6;
+                this.length = Math.random() * 15 + 10;
+                this.opacity = Math.random() * 0.4 + 0.2;
+            }
+            fall() {
+                this.y += this.speed;
+                if (this.y > canvas.height) {
+                    this.reset();
+                }
+            }
+            draw() {
+                ctx.beginPath();
+                // рН-ээс хамаарч усанд үл ялиг шар/ногоон туяа оруулах
+                if (phLevel < 4.5) {
+                    ctx.strokeStyle = `rgba(180, 220, 100, ${this.opacity})`;
+                } else if (phLevel < 5.6) {
+                    ctx.strokeStyle = `rgba(150, 200, 220, ${this.opacity})`;
+                } else {
+                    ctx.strokeStyle = `rgba(174, 219, 255, ${this.opacity})`;
+                }
+                ctx.lineWidth = 1.2;
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x - 1, this.y + this.length);
+                ctx.stroke();
+            }
+        }
+
+        // Борооны дуслыг үүсгэх
+        function initRain() {
+            rainDrops = [];
+            let count = isSimulating ? (8 - phLevel) * 40 : 0; // рН багасах тусам илүү хүчтэй хортой аадар мэт харагдуулна
+            for (let i = 0; i < count; i++) {
+                rainDrops.push(new RainDrop());
+            }
+        }
+
+        function animateRain() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (isSimulating) {
+                // рН-ийн хэмжээгээр агаар мандалд манан үүсгэх
+                if (phLevel < 5.0) {
+                    ctx.fillStyle = `rgba(120, 100, 70, ${(7.0 - phLevel) * 0.04})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+                rainDrops.forEach(drop => {
+                    drop.fall();
+                    drop.draw();
+                });
+            }
+            animationFrameId = requestAnimationFrame(animateRain);
+        }
+        animateRain();
+
+        // --- ИНТЕРФЕЙСИЙН УДИРДЛАГА ---
+        
+        // рН өөрчлөгдөх үеийн үйлдэл
+        phSlider.addEventListener('input', (e) => {
+            phLevel = parseFloat(e.target.value);
+            phDisplayVal.textContent = phLevel.toFixed(1);
+            
+            // рН-ийн утгын өнгө засах
+            phDisplayVal.className = "px-3 py-1 text-lg font-extrabold rounded-lg min-w-[60px] text-center shadow text-white";
+            if (phLevel >= 6.0) {
+                phDisplayVal.classList.add('bg-green-600');
+            } else if (phLevel >= 5.0) {
+                phDisplayVal.classList.add('bg-yellow-500');
+            } else if (phLevel >= 4.0) {
+                phDisplayVal.classList.add('bg-orange-600');
+            } else {
+                phDisplayVal.classList.add('bg-red-600');
+            }
+
+            updateChemicalExplanation();
+            initRain(); // Борооны хурдыг шинэчлэх
+        });
+
+        // Таб солих механизм
+        function switchTab(tabName) {
+            currentTab = tabName;
+            
+            // Бүх табыг идэвхгүй болгох
+            tabForest.className = "flex-1 py-3 px-4 rounded-lg font-medium text-sm transition duration-150 text-slate-400 hover:text-slate-200 flex items-center justify-center gap-2";
+            tabMonument.className = "flex-1 py-3 px-4 rounded-lg font-medium text-sm transition duration-150 text-slate-400 hover:text-slate-200 flex items-center justify-center gap-2";
+            tabLake.className = "flex-1 py-3 px-4 rounded-lg font-medium text-sm transition duration-150 text-slate-400 hover:text-slate-200 flex items-center justify-center gap-2";
+            
+            viewForest.classList.add('opacity-0', 'pointer-events-none');
+            viewMonument.classList.add('opacity-0', 'pointer-events-none');
+            viewLake.classList.add('opacity-0', 'pointer-events-none');
+
+            // Сонгогдсон табыг идэвхжүүлэх
+            if (tabName === 'forest') {
+                tabForest.className = "flex-1 py-3 px-4 rounded-lg font-medium text-sm transition duration-150 flex items-center justify-center gap-2 tab-active text-slate-200";
+                viewForest.classList.remove('opacity-0', 'pointer-events-none');
+            } else if (tabName === 'monument') {
+                tabMonument.className = "flex-1 py-3 px-4 rounded-lg font-medium text-sm transition duration-150 flex items-center justify-center gap-2 tab-active text-slate-200";
+                viewMonument.classList.remove('opacity-0', 'pointer-events-none');
+            } else if (tabName === 'lake') {
+                tabLake.className = "flex-1 py-3 px-4 rounded-lg font-medium text-sm transition duration-150 flex items-center justify-center gap-2 tab-active text-slate-200";
+                viewLake.classList.remove('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        tabForest.addEventListener('click', () => switchTab('forest'));
+        tabMonument.addEventListener('click', () => switchTab('monument'));
+        tabLake.addEventListener('click', () => switchTab('lake'));
+
+        // Химийн тайлбарыг рН-ээс хамаарч өөрчлөх
+        function updateChemicalExplanation() {
+            if (phLevel === 7.0) {
+                chemExplanation.innerHTML = `<h4 class="font-bold text-indigo-400 mb-1"><i class="fa-solid fa-flask"></i> Химийн нөлөөлөл: Саармаг ус</h4><p>Усны рН $7.0$ үед ямар нэг урвал явагдахгүй. Энэ нь цэвэр, эрүүл байгалийн орчин юм.</p>`;
+            } else if (phLevel >= 5.6) {
+                chemExplanation.innerHTML = `<h4 class="font-bold text-green-400 mb-1"><i class="fa-solid fa-flask"></i> Химийн нөлөөлөл: Хэвийн бороо</h4><p>Борооны усны байгалийн рН нь $5.6$ байдаг. Агаар дахь $CO_2$ хий уусч сул нүүрсний хүчил үүсгэдэг: <br><span class="font-mono text-[11px]">$CO_2 + H_2O \\rightarrow H_2CO_3$</span>. Энэ нь байгальд хоргүй.</p>`;
+            } else if (phLevel >= 4.5) {
+                chemExplanation.innerHTML = `<h4 class="font-bold text-yellow-500 mb-1"><i class="fa-solid fa-flask"></i> Химийн нөлөөлөл: Хүчиллэг</h4><p>Хүхэрлэг хүчил ($H_2SO_3$) болон азотын хүчил ($HNO_3$) холилдож эхэлнэ. Хөрснөөс шим тэжээлт кали, кальци угаагдаж эхэлнэ.</p>`;
+            } else {
+                chemExplanation.innerHTML = `<h4 class="font-bold text-red-500 mb-1"><i class="fa-solid fa-flask"></i> Химийн нөлөөлөл: Хүчтэй Хүчил!</h4><p>Хүчтэй хүчиллэг тунадас нь шохойг шууд уусгана: <br><span class="font-mono text-[10px]">$CaCO_3(хатуу) + 2H^+(уусмал) \\rightarrow Ca^{2+} + H_2O + CO_2(хий) \\uparrow$</span>. <br>Хөрснөөс ургамалд хортой хөнгөн цагааны ион ($Al^{3+}$) чөлөөлөгдөнө.</p>`;
+            }
+        }
+
+        // --- СИМУЛЯЦ АЖИЛЛУУЛАХ ЛОГИК ---
+        btnStart.addEventListener('click', () => {
+            if (isSimulating) {
+                // Симуляцыг зогсоох
+                isSimulating = false;
+                btnStart.innerHTML = `<i class="fa-solid fa-play"></i> Эхлүүлэх`;
+                btnStart.className = "bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20";
+                simStatusBadge.className = "px-2 py-0.5 text-xs font-bold rounded bg-green-500/10 text-green-400 border border-green-500/20 flex items-center gap-1.5";
+                simStatusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Идэвхтэй бус`;
+                clearInterval(intervalId);
+                initRain();
+            } else {
+                // Симуляцыг эхлүүлэх
+                isSimulating = true;
+                btnStart.innerHTML = `<i class="fa-solid fa-pause"></i> Түр зогсоох`;
+                btnStart.className = "bg-yellow-600 hover:bg-yellow-500 text-white font-semibold py-3 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-yellow-600/20";
+                simStatusBadge.className = "px-2 py-0.5 text-xs font-bold rounded bg-red-500/10 text-red-400 border border-red-500/20 flex items-center gap-1.5";
+                simStatusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> Бороо орж байна`;
+                
+                initRain();
+                
+                // Сар, жил өнгөрөх тоолуур (1 секундэд 1 жил)
+                intervalId = setInterval(() => {
+                    elapsedMonths += 2;
+                    if (elapsedMonths >= 12) {
+                        elapsedYears += 1;
+                        elapsedMonths = 0;
+                    }
+                    yearDisplay.textContent = `${elapsedYears} жил ${elapsedMonths} сар`;
+                    
+                    updateSimulationImpact();
+                }, 160);
+            }
+        });
+
+        // Анхны төлөвт оруулах (Reset)
+        btnReset.addEventListener('click', () => {
+            isSimulating = false;
+            clearInterval(intervalId);
+            elapsedYears = 0;
+            elapsedMonths = 0;
+            yearDisplay.textContent = "0 жил / сар";
+            phLevel = 7.0;
+            phSlider.value = 7.0;
+            phDisplayVal.textContent = "7.0";
+            phDisplayVal.className = "px-3 py-1 text-lg font-extrabold rounded-lg min-w-[60px] text-center shadow text-white bg-indigo-600";
+
+            forestHealth = 100;
+            monumentErosion = 0;
+            lakeHealth = 100;
+
+            btnStart.innerHTML = `<i class="fa-solid fa-play"></i> Эхлүүлэх`;
+            btnStart.className = "bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20";
+            simStatusBadge.className = "px-2 py-0.5 text-xs font-bold rounded bg-green-500/10 text-green-400 border border-green-500/20 flex items-center gap-1.5";
+            simStatusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> Идэвхтэй бус`;
+
+            resetVisuals();
+            updateChemicalExplanation();
+            initRain();
+        });
+
+        // Дор бүр өөрчлөлтийг тооцоолох
+        function updateSimulationImpact() {
+            // рН-ээс хамаарах доройтох коэффициент
+            let acidFactor = (7.0 - phLevel); // 0-оос 4.0 хүртэл байна
+            
+            if (acidFactor > 1.4) { // Хэвийн борооноос (5.6-аас) бага рН үед нөлөөлж эхэлнэ
+                // Ой модны сүйрэл
+                forestHealth -= (acidFactor * 0.25);
+                if (forestHealth < 5) forestHealth = 5;
+
+                // Хөшөөний элэгдэл
+                monumentErosion += (acidFactor * 0.28);
+                if (monumentErosion > 100) monumentErosion = 100;
+
+                // Усан экосистем (рН 5.0-аас доош ороход загас үхэж эхэлнэ)
+                if (phLevel < 5.5) {
+                    lakeHealth -= (acidFactor * 0.45);
+                } else {
+                    lakeHealth -= (acidFactor * 0.05);
+                }
+                if (lakeHealth < 0) lakeHealth = 0;
+            } else {
+                // Маш сул хүчиллэг эсвэл саармаг үед маш удаан нөхөн сэргэх эсвэл хэвийн байна
+                forestHealth += 0.05;
+                if (forestHealth > 100) forestHealth = 100;
+                lakeHealth += 0.05;
+                if (lakeHealth > 100) lakeHealth = 100;
+            }
+
+            // Статистикийг шинэчлэх
+            updateStatusUI();
+            
+            // Визуал элементүүдийг өөрчлөх
+            applyVisualUpdates();
+        }
+
+        function updateStatusUI() {
+            // Ой мод
+            forestBar.style.width = `${forestHealth}%`;
+            forestStatusTxt.textContent = `${Math.round(forestHealth)}% (${getForestStatusLabel(forestHealth)})`;
+            setBarColor(forestBar, forestHealth);
+
+            // Хөшөө
+            monumentBar.style.width = `${monumentErosion}%`;
+            monumentStatusTxt.textContent = `${Math.round(monumentErosion)}% (${getMonumentStatusLabel(monumentErosion)})`;
+            setBarColorReverse(monumentBar, monumentErosion);
+
+            // Нуур
+            lakeBar.style.width = `${lakeHealth}%`;
+            lakeStatusTxt.textContent = `${Math.round(lakeHealth)}% (${getLakeStatusLabel(lakeHealth)})`;
+            setBarColor(lakeBar, lakeHealth);
+        }
+
+        function setBarColor(barElement, val) {
+            barElement.className = "h-full transition-all duration-300 ";
+            if (val > 70) {
+                barElement.classList.add('bg-green-500');
+            } else if (val > 40) {
+                barElement.classList.add('bg-yellow-500');
+            } else {
+                barElement.classList.add('bg-red-500');
+            }
+        }
+
+        function setBarColorReverse(barElement, val) {
+            barElement.className = "h-full transition-all duration-300 ";
+            if (val < 30) {
+                barElement.classList.add('bg-green-500');
+            } else if (val < 60) {
+                barElement.classList.add('bg-yellow-500');
+            } else {
+                barElement.classList.add('bg-red-500');
+            }
+        }
+
+        // Үнэлгээний текстүүд
+        function getForestStatusLabel(health) {
+            if (health > 85) return "Маш сайн";
+            if (health > 60) return "Дунд зэрэг (Навч шарласан)";
+            if (health > 30) return "Хүнд (Ой мод хатаж байна)";
+            return "Сүйрсэн (Амьгүй хуурай мод)";
+        }
+
+        function getMonumentStatusLabel(erosion) {
+            if (erosion < 15) return "Хэвийн";
+            if (erosion < 45) return "Ан цав үүссэн";
+            if (erosion < 75) return "Хүчтэй элэгдсэн";
+            return "Хэлбэрээ алдсан";
+        }
+
+        function getLakeStatusLabel(health) {
+            if (health > 85) return "Эрүүл нуур";
+            if (health > 60) return "Тэнцвэр алдагдсан";
+            if (health > 30) return "Маш аюултай (Загас үхэж байна)";
+            return "Амьгүй нуур (Амьд биет устсан)";
+        }
+
+        // --- ВИЗУАЛ ӨӨРЧЛӨЛТҮҮДИЙГ ХЭРЭГЖҮҮЛЭХ ---
+        function applyVisualUpdates() {
+            // 1. Ой модны визуал
+            const greenLeaves = document.querySelectorAll('.tree-leaves');
+            const deadLeaves = document.querySelectorAll('.tree-leaves-dead');
+            
+            const greenOpacity = forestHealth / 100;
+            const brownOpacity = (100 - forestHealth) / 100;
+
+            greenLeaves.forEach(leaf => {
+                leaf.style.opacity = greenOpacity;
+                // Навчны өнгийг үхэж буй мэт шар-ногоон болгох
+                if (forestHealth < 70) {
+                    leaf.setAttribute('fill', '#405c33');
+                } else {
+                    leaf.setAttribute('fill', '#1b4332');
+                }
+            });
+
+            deadLeaves.forEach(leaf => {
+                leaf.style.opacity = brownOpacity;
+            });
+
+            // Хөрс ба өвсний өнгийг шарлуулах
+            if (forestHealth < 50) {
+                forestGrass.setAttribute('fill', '#6b5b29');
+                forestSoil.setAttribute('fill', '#30261c');
+                flowersGroup.style.opacity = (forestHealth / 100);
+            } else {
+                forestGrass.setAttribute('fill', '#2d6a4f');
+                forestSoil.setAttribute('fill', '#4a3728');
+                flowersGroup.style.opacity = 1;
+            }
+
+            // Тайлбар бичиг шинэчлэх
+            if (forestHealth < 30) {
+                forestDesc.innerHTML = `<span class="text-red-400 font-semibold">Аюулын дохио:</span> Хүчтэй хүчиллэг тунадас хөрсний чухал шим тэжээлийг угааж, ургамлыг үхүүлж байна. Ой мод нөхөн сэргэх боломжгүй боллоо.`;
+            } else if (forestHealth < 75) {
+                forestDesc.innerHTML = `<span class="text-yellow-400 font-semibold">Сөрөг нөлөө:</span> Борооны хүчил навчны хамгаалалтын бүрхүүлийг уусгаснаар ургамал амархан өвчилж, өнгөө алдаж байна.`;
+            } else {
+                forestDesc.textContent = `Эрүүл экосистем. Хөрсний рН хэвийн тул ургамал шим тэжээлээ бүрэн авч байна.`;
+            }
+
+            // 2. Хөшөө дурсгалын визуал
+            sculptureCracks.style.opacity = monumentErosion / 100;
+            if (monumentErosion > 30) {
+                sculptureDissolve.style.opacity = (monumentErosion - 30) / 70;
+                sculptureBody.setAttribute('fill', '#a0aec0');
+                sculptureHead.setAttribute('fill', '#cbd5e0');
+            } else {
+                sculptureDissolve.style.opacity = 0;
+                sculptureBody.setAttribute('fill', '#cbd5e0');
+                sculptureHead.setAttribute('fill', '#e2e8f0');
+            }
+
+            // Химийн урвалын бөмбөлөг гаргах ($CO_2$ хий)
+            co2BubblesGroup.innerHTML = '';
+            if (isSimulating && phLevel < 5.6) {
+                let bubbleCount = Math.floor((6.0 - phLevel) * 4);
+                for (let i = 0; i < bubbleCount; i++) {
+                    let cx = 350 + Math.random() * 100;
+                    let cy = 90 + Math.random() * 120;
+                    let r = Math.random() * 3 + 1.5;
+                    let circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    circle.setAttribute("cx", cx);
+                    circle.setAttribute("cy", cy);
+                    circle.setAttribute("r", r);
+                    circle.setAttribute("fill", "rgba(255,255,255,0.7)");
+                    co2BubblesGroup.appendChild(circle);
+                }
+            }
+
+            if (monumentErosion > 70) {
+                monumentDesc.innerHTML = `<span class="text-red-400 font-semibold">Эвдрэл:</span> Кальцийн Карбонат ($CaCO_3$) нь борооны хүчилд уусаж урсаснаар хөшөөний уран нарийн хийц бүрмөсөн арилж байна.`;
+            } else if (monumentErosion > 20) {
+                monumentDesc.innerHTML = `<span class="text-yellow-400 font-semibold">Элэгдэл явагдаж байна:</span> Хүчиллэг ус хөшөөний гадаргуутай химийн урвалд орж нүүрсхүчлийн хий ($CO_2$) ялгаруулж, гантиг чулууг идэж байна.`;
+            } else {
+                monumentDesc.textContent = `Барилга байгууламж, түүхэн дурсгалт газрууд орчны аюулгүй байдалд байна.`;
+            }
+
+            // 3. Усан экосистемийн визуал
+            // Усны өнгийг рН-ээс хамааруулж өөрчлөх
+            if (lakeHealth < 40) {
+                lakeWater.setAttribute('fill', '#3f5d50'); // Үхэж буй ногоон туяа
+                seaweed1.setAttribute('stroke', '#4a5568'); // Үхсэн замаг
+                seaweed2.setAttribute('stroke', '#4a5568');
+            } else if (lakeHealth < 75) {
+                lakeWater.setAttribute('fill', '#1d4ed8'); // Ердийн хөх
+                seaweed1.setAttribute('stroke', '#047857');
+                seaweed2.setAttribute('stroke', '#047857');
+            } else {
+                lakeWater.setAttribute('fill', '#0284c7'); // Цэвэр хөх-ногоон
+                seaweed1.setAttribute('stroke', '#059669');
+                seaweed2.setAttribute('stroke', '#059669');
+            }
+
+            // Загаснуудын амьдрах чадвар (Загас үхэх үед дээшээ харах, эсвэл далийх)
+            const fish1 = document.getElementById('fish-1');
+            const fish2 = document.getElementById('fish-2');
+            const fish3 = document.getElementById('fish-3');
+
+            // Загаснууд рН багасахад доошоо живж эсвэл урвуу харна
+            if (lakeHealth < 60) {
+                fish3.setAttribute('transform', 'translate(600, 150) rotate(90)'); // 1-р загас үхэв
+                fish3.querySelector('.fish-body').setAttribute('fill', '#94a3b8');
+            } else {
+                fish3.setAttribute('transform', 'translate(600, 120)');
+                fish3.querySelector('.fish-body').setAttribute('fill', '#ec4899');
+            }
+
+            if (lakeHealth < 30) {
+                fish2.setAttribute('transform', 'translate(450, 110) rotate(180)'); // 2-р загас үхэж дээш хөвөв
+                fish2.querySelector('.fish-body').setAttribute('fill', '#64748b');
+            } else {
+                fish2.setAttribute('transform', 'translate(450, 190)');
+                fish2.querySelector('.fish-body').setAttribute('fill', '#3b82f6');
+            }
+
+            if (lakeHealth < 10) {
+                fish1.setAttribute('transform', 'translate(150, 100) rotate(-180)'); // Сүүлчийн загас
+                fish1.querySelector('.fish-body').setAttribute('fill', '#475569');
+            } else {
+                fish1.setAttribute('transform', 'translate(150, 140)');
+                fish1.querySelector('.fish-body').setAttribute('fill', '#f97316');
+            }
+
+            if (lakeHealth < 30) {
+                lakeDesc.innerHTML = `<span class="text-red-400 font-semibold">Экологийн сүйрэл:</span> Усны рН $5.0$-оос доошилсноор усан дахь загасны өндөг амьдрах боломжгүй болж, хөнгөн цагааны хордлогын улмаас загаснууд маш хурдан үхэж байна.`;
+            } else if (lakeHealth < 75) {
+                lakeDesc.innerHTML = `<span class="text-yellow-400 font-semibold">Усны хүчиллэгжилт:</span> Нарийн мэдрэмтгий усны амьтад үржихээ больж эхэллээ. Хүнсний сүлжээ алдагдаж байна.`;
+            } else {
+                lakeDesc.textContent = `Усны рН хэвийн хэмжээнд байна. Нуурын амьд биетүүд эрүүл, аюулгүй амьдарч байна.`;
+            }
+        }
+
+        // Анхны төлөвт визуалыг буцаах
+        function resetVisuals() {
+            // Ой мод
+            const greenLeaves = document.querySelectorAll('.tree-leaves');
+            const deadLeaves = document.querySelectorAll('.tree-leaves-dead');
+            greenLeaves.forEach(leaf => {
+                leaf.style.opacity = 0.95;
+                leaf.setAttribute('fill', '#1b4332');
+            });
+            deadLeaves.forEach(leaf => {
+                leaf.style.opacity = 0;
+            });
+            forestGrass.setAttribute('fill', '#2d6a4f');
+            forestSoil.setAttribute('fill', '#4a3728');
+            flowersGroup.style.opacity = 1;
+            forestDesc.textContent = `Эрүүл экосистем. Хөрсний рН хэвийн тул ургамал шим тэжээлээ бүрэн авч байна.`;
+
+            // Хөшөө
+            sculptureCracks.style.opacity = 0;
+            sculptureDissolve.style.opacity = 0;
+            sculptureBody.setAttribute('fill', '#cbd5e0');
+            sculptureHead.setAttribute('fill', '#e2e8f0');
+            co2BubblesGroup.innerHTML = '';
+            monumentDesc.textContent = `Барилга байгууламж, түүхэн дурсгалт газрууд орчны аюулгүй байдалд байна.`;
+
+            // Нуур
+            lakeWater.setAttribute('fill', '#0284c7');
+            seaweed1.setAttribute('stroke', '#059669');
+            seaweed2.setAttribute('stroke', '#059669');
+            
+            const fish1 = document.getElementById('fish-1');
+            const fish2 = document.getElementById('fish-2');
+            const fish3 = document.getElementById('fish-3');
+            
+            fish1.setAttribute('transform', 'translate(150, 140)');
+            fish1.querySelector('.fish-body').setAttribute('fill', '#f97316');
+            
+            fish2.setAttribute('transform', 'translate(450, 190)');
+            fish2.querySelector('.fish-body').setAttribute('fill', '#3b82f6');
+            
+            fish3.setAttribute('transform', 'translate(600, 120)');
+            fish3.querySelector('.fish-body').setAttribute('fill', '#ec4899');
+            
+            lakeDesc.textContent = `Усны рН хэвийн хэмжээнд байна. Нуурын амьд биетүүд эрүүл, аюулгүй амьдарч байна.`;
+
+            updateStatusUI();
+        }
+
+        // --- ЭХЛЭХЭД АЖИЛЛАХ АЛХАМУУД ---
+        updateChemicalExplanation();
+        updateStatusUI();
+    </script>
+</body>
+</html>
